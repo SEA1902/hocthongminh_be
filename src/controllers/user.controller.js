@@ -44,7 +44,6 @@ exports.create = async (req, res) => {
 exports.login = async (req, res) => {
   const username = req.body.username;
   var password = req.body.password;
-
   const user = await User.findOne({ username: username });
   if (!user) {
     return res.status(400).send({
@@ -198,7 +197,6 @@ exports.changeAvatar = async (req, res, next) => {
   }
   userId = req.body.userId;
   // Create a new blob in the bucket and upload the file data.
-
   const blob = bucket.file(
     process.env.GCLOUD_STORAGE_BASE_FOLDER + req.file.originalname
   );

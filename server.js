@@ -18,14 +18,17 @@ mongoose
     console.log("Could not connect to the database. Error...", err);
     process.exit();
   });
-
+const corsOptions = {
+  origin: ["https://hocthongminh-nextjs.vercel.app", "http://localhost:4000"],
+};
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(bodyParser.json());
 
-app.use(cors());
+app.use(cors(corsOptions));
+
 app.use(cookieParser());
 app.get("/", (req, res) => {
   res.json({ message: "Server is running :D" });
