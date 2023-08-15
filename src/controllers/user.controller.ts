@@ -1,9 +1,10 @@
 const { format } = require("util");
 const jwt = require("jsonwebtoken");
 var CryptoJS = require("crypto-js");
-const { Storage } = require("@google-cloud/storage");
+import { Storage } from "@google-cloud/storage";
+import User from "../entity/user";
 
-const User = require("../modules/user.model");
+const UserModel = require("../models/user.model");
 
 const storage = new Storage({
   projectId: process.env.GCLOUD_STORAGE_PROJECT_ID,
@@ -13,10 +14,10 @@ const storage = new Storage({
     client_email: process.env.GCLOUD_STORAGE_CLIENT_EMAIL,
   },
 });
-const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
+const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET || "");
 
-exports.create = async (req, res) => {
-  const existingUser = await User.findOne({
+exports.create = async (req: any, res: any) => {
+  const existingUser = await UserModel.findOne({
     $or: [{ email: req.body.email }, { username: req.body.username }],
   });
   if (existingUser) {
@@ -26,7 +27,7 @@ exports.create = async (req, res) => {
   password = CryptoJS.AES.decrypt(password, process.env.secretKey);
   password = password.toString(CryptoJS.enc.Utf8);
   const passwordHash = CryptoJS.SHA256(password).toString();
-  const user = new User({
+  const user = new UserModel({
     username: req.body.username,
     name: req.body.name,
     password: passwordHash,
@@ -34,17 +35,28 @@ exports.create = async (req, res) => {
     phone: req.body.phone,
     classNumber: req.body.classNumber,
   });
-  await user.save().then((data) => {
-    return res.status(200).send({
-      success: "true",
+  await user.save().then((user: User) => {
+    const token = jwt.sign({ userId: user._id }, process.env.jwtSecret, {
+      expiresIn: 86400,
     });
+    res.cookie("token", token, { httpOnly: true, maxAge: 86400 });
+    let data = {
+      id: user._id,
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      classNumber: user.classNumber,
+      token: token,
+    };
+    res.status(200).send(data);
   });
 };
 
-exports.login = async (req, res) => {
+exports.login = async (req: any, res: any) => {
   const username = req.body.username;
   var password = req.body.password;
-  const user = await User.findOne({ username: username });
+  const user = await UserModel.findOne({ username: username });
   if (!user) {
     return res.status(400).send({
       message: "Bạn đã nhập sai tài khoản hoặc mật khẩu",
@@ -79,14 +91,14 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.logout = async (req, res) => {
+exports.logout = async (req: any, res: any) => {
   res.clearCookie("token");
   res.status(200).send({
     success: "true",
   });
 };
 
-exports.updateInformation = (req, res) => {
+exports.updateInformation = (req: any, res: any) => {
   const userId = req.body.id;
   const name = req.body.name;
   const birthday = req.body.birthday;
@@ -95,7 +107,7 @@ exports.updateInformation = (req, res) => {
   const email = req.body.email;
   const phone = req.body.phone;
   const classNumber = req.body.classNumber;
-  User.findByIdAndUpdate(
+  UserModel.findByIdAndUpdate(
     userId,
     {
       name: name,
@@ -108,7 +120,7 @@ exports.updateInformation = (req, res) => {
     },
     { new: true }
   )
-    .then((user) => {
+    .then((user: User) => {
       let data = {
         id: user._id,
         username: user.username,
@@ -123,22 +135,24 @@ exports.updateInformation = (req, res) => {
       };
       res.status(200).send(data);
     })
-    .catch((err) => {
+    .catch((err: any) => {
       res.status(500).send({
         message: err.message || "Some error occurred",
       });
     });
 };
 
-exports.getUserFromToken = async (req, res) => {
-  token = req.body.token;
-  jwt.verify(token, process.env.jwtSecret, async (err, decoded) => {
+exports.getUserFromToken = async (req: any, res: any) => {
+  const token = req.body.token;
+
+  jwt.verify(token, process.env.jwtSecret, async (err: any, decoded: any) => {
     if (err) {
       console.error(err);
     } else {
       const userId = decoded.userId;
       try {
-        const user = await User.findById(userId);
+        const user = await UserModel.findById(userId);
+
         let data = {
           id: user._id,
           username: user.username,
@@ -153,7 +167,7 @@ exports.getUserFromToken = async (req, res) => {
         };
 
         res.status(200).send(data);
-      } catch (err) {
+      } catch (err: any) {
         res.status(500).send({
           message: err.message || "Some error occurred",
         });
@@ -162,12 +176,12 @@ exports.getUserFromToken = async (req, res) => {
   });
 };
 
-exports.changePassword = async (req, res) => {
+exports.changePassword = async (req: any, res: any) => {
   const userId = req.body.userId;
   var currentPassword = req.body.currentPassword;
   var newPassword = req.body.newPassword;
 
-  const user = await User.findById(userId);
+  const user = await UserModel.findById(userId);
   currentPassword = CryptoJS.AES.decrypt(
     currentPassword,
     process.env.secretKey
@@ -183,19 +197,19 @@ exports.changePassword = async (req, res) => {
     newPassword = newPassword.toString(CryptoJS.enc.Utf8);
     newPassword = CryptoJS.SHA256(newPassword).toString();
     user.password = newPassword;
-    await user.save().then((data) => {
+    await user.save().then(() => {
       return res.status(200).send({
         success: "true",
       });
     });
   }
 };
-exports.changeAvatar = async (req, res, next) => {
+exports.changeAvatar = async (req: any, res: any, next: any) => {
   if (!req.file) {
     res.status(400).send("No file uploaded.");
     return;
   }
-  userId = req.body.userId;
+  const userId = req.body.userId;
   // Create a new blob in the bucket and upload the file data.
   const blob = bucket.file(
     process.env.GCLOUD_STORAGE_BASE_FOLDER + req.file.originalname
@@ -210,9 +224,9 @@ exports.changeAvatar = async (req, res, next) => {
       `https://storage.cloud.google.com/${bucket.name}/${blob.name}`
     );
 
-    const user = await User.findById(userId);
+    const user = await UserModel.findById(userId);
     user.avatar = publicUrl;
-    await user.save().then((user) => {
+    await user.save().then((user: User) => {
       let data = {
         id: user._id,
         username: user.username,

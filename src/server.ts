@@ -4,7 +4,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
-const route = require("./src/routes");
+const route = require("./routes");
 mongoose.Promise = global.Promise;
 mongoose.set("strictQuery", false);
 mongoose
@@ -14,7 +14,7 @@ mongoose
   .then(() => {
     console.log("Successfully connected to the database");
   })
-  .catch((err) => {
+  .catch((err: any) => {
     console.log("Could not connect to the database. Error...", err);
     process.exit();
   });
@@ -30,7 +30,7 @@ app.use(bodyParser.json());
 app.use(cors(corsOptions));
 
 app.use(cookieParser());
-app.get("/", (req, res) => {
+app.get("/", (req: any, res: any) => {
   res.json({ message: "Server is running :D" });
 });
 

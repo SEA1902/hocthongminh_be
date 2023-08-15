@@ -1,9 +1,9 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 const mongoosePaginate = require("mongoose-paginate-v2");
 
-const KnowledgeSchema = mongoose.Schema(
+const KnowledgeSchema = new mongoose.Schema(
   {
-    id: Number,
+    id: String,
     title: String,
     content: String,
     slug: String,
