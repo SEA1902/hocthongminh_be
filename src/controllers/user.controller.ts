@@ -56,12 +56,13 @@ exports.create = async (req: any, res: any) => {
 exports.login = async (req: any, res: any) => {
   const username = req.body.username;
   var password = req.body.password;
-  const user = await UserModel.findOne({ username: username });
+  var user = await UserModel.findOne({ username: username });
   if (!user) {
     return res.status(400).send({
       message: "Bạn đã nhập sai tài khoản hoặc mật khẩu",
     });
   }
+  user = new User(user);
   password = CryptoJS.AES.decrypt(password, process.env.secretKey);
   password = password.toString(CryptoJS.enc.Utf8);
   password = CryptoJS.SHA256(password).toString();

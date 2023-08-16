@@ -4,7 +4,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
-const route = require("./routes");
+import route from "./routes";
 mongoose.Promise = global.Promise;
 mongoose.set("strictQuery", false);
 mongoose
